@@ -31,7 +31,10 @@ XMFLOAT3 Object3d::up = { 0, 1, 0 };
 D3D12_VERTEX_BUFFER_VIEW Object3d::vbView{};
 D3D12_INDEX_BUFFER_VIEW Object3d::ibView{};
 Object3d::VertexPosNormalUv Object3d::vertices[vertexCount];
-unsigned short Object3d::indices[planeCount * 3];
+unsigned short Object3d::indices[indexCount];
+
+XMMATRIX Object3d::matBillboard = XMMatrixIdentity();
+XMMATRIX Object3d::matBillboardY = XMMatrixIdentity();
 
 void Object3d::StaticInitialize(ID3D12Device * device, int window_width, int window_height)
 {
@@ -128,6 +131,19 @@ void Object3d::CameraMoveVector(XMFLOAT3 move)
 	SetTarget(target_moved);
 }
 
+void Object3d::CameraMoveEyeVector(XMFLOAT3 move)
+{
+
+	XMFLOAT3 eye_moved = GetEye();
+
+	eye_moved.x += move.x;
+	eye_moved.y += move.y;
+	eye_moved.z += move.z;
+
+	SetEye(eye_moved);
+
+}
+
 void Object3d::InitializeDescriptorHeap()
 {
 	HRESULT result = S_FALSE;
@@ -149,11 +165,14 @@ void Object3d::InitializeDescriptorHeap()
 
 void Object3d::InitializeCamera(int window_width, int window_height)
 {
-	// ビュー行列の生成
-	matView = XMMatrixLookAtLH(
-		XMLoadFloat3(&eye),
-		XMLoadFloat3(&target),
-		XMLoadFloat3(&up));
+	//// ビュー行列の生成
+	//matView = XMMatrixLookAtLH(
+	//	XMLoadFloat3(&eye),
+	//	XMLoadFloat3(&target),
+	//	XMLoadFloat3(&up));
+
+	//ビュー行列の計算
+	UpdateViewMatrix();
 
 	// 平行投影による射影行列の生成
 	//constMap->mat = XMMatrixOrthographicOffCenterLH(
@@ -391,7 +410,7 @@ void Object3d::CreateModel()
 	HRESULT result = S_FALSE;
 
 	std::vector<VertexPosNormalUv> realVertices;
-	// 頂点座標の計算（重複あり）
+	/*// 頂点座標の計算（重複あり）
 	{
 		realVertices.resize((division + 1) * 2);
 		int index = 0;
@@ -507,7 +526,19 @@ void Object3d::CreateModel()
 		XMStoreFloat3(&vertices[index0].normal, normal);
 		XMStoreFloat3(&vertices[index1].normal, normal);
 		XMStoreFloat3(&vertices[index2].normal, normal);
-	}
+	}*/
+
+	//四角形の頂点データ
+	VertexPosNormalUv verticesSquare[] = {
+		{{-5.0f,-5.0f,0.0f},{0,0,1},{0,1}},
+		{{-5.0f,+5.0f,0.0f},{0,0,1},{0,0}},
+		{{+5.0f,-5.0f,0.0f},{0,0,1},{1,1}},
+		{{+5.0f,+5.0f,0.0f},{0,0,1},{1,0}},
+	};
+
+
+	//メンバ変数にコピー
+	std::copy(std::begin(verticesSquare), std::end(verticesSquare), vertices);
 
 	UINT sizeVB = static_cast<UINT>(sizeof(vertices));
 
@@ -539,6 +570,15 @@ void Object3d::CreateModel()
 	// リソース設定
 	resourceDesc.Width = sizeIB;
 
+	//四角形のインデックスデータ
+	unsigned short indicesSquare[] = {
+		0,1,2,
+		2,1,3,
+	};
+
+	//メンバ変数にコピー
+	std::copy(std::begin(indicesSquare), std::end(indicesSquare), indices);
+
 	// インデックスバッファ生成
 	result = device->CreateCommittedResource(
 		&heapProps, D3D12_HEAP_FLAG_NONE, &resourceDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
@@ -562,12 +602,113 @@ void Object3d::CreateModel()
 	ibView.BufferLocation = indexBuff->GetGPUVirtualAddress();
 	ibView.Format = DXGI_FORMAT_R16_UINT;
 	ibView.SizeInBytes = sizeof(indices);
+
+	
+
 }
 
 void Object3d::UpdateViewMatrix()
 {
 	// ビュー行列の更新
-	matView = XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up));
+	//matView = XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up));
+
+	//視点座標
+	XMVECTOR eyePosition = XMLoadFloat3(&eye);
+	//注視点座標
+	XMVECTOR targetPosition = XMLoadFloat3(&target);
+	//(仮の)上方向
+	XMVECTOR upVector = XMLoadFloat3(&up);
+
+	//カメラZ軸(視点方法)
+	XMVECTOR cameraAxisZ = XMVectorSubtract(targetPosition, eyePosition);
+
+	//0ベクトルだと向きが定まらないので除外
+	assert(!XMVector3Equal(cameraAxisZ, XMVectorZero()));
+	assert(!XMVector3IsInfinite(cameraAxisZ));
+	assert(!XMVector3Equal(upVector, XMVectorZero()));
+	assert(!XMVector3IsInfinite(upVector));
+
+	//ベクトルを正規化
+	cameraAxisZ = XMVector3Normalize(cameraAxisZ);
+
+	//カメラのX軸(右方向)
+	XMVECTOR cameraAxisX;
+
+	//X軸は上方向→Z軸の外積で求まる
+	cameraAxisX = XMVector3Cross(upVector, cameraAxisZ);
+
+	//ベクトルを正規化
+	cameraAxisX = XMVector3Normalize(cameraAxisX);
+
+	//カメラのY軸(上方向)
+	XMVECTOR cameraAxisY;
+
+	//Y軸はZ軸→X軸の外積で求まる
+	cameraAxisY = XMVector3Cross(cameraAxisZ, cameraAxisX);
+
+	//ベクトルを正規化
+	cameraAxisY = XMVector3Normalize(cameraAxisY);
+
+	//カメラ回転行列
+	XMMATRIX matCameraRot;
+
+	//カメラ座標系→ワールド座標系の変換行列
+	matCameraRot.r[0] = cameraAxisX;
+	matCameraRot.r[1] = cameraAxisY;
+	matCameraRot.r[2] = cameraAxisZ;
+	matCameraRot.r[3] = XMVectorSet(0,0,0,1);
+
+
+	//転置二より逆行列(逆回転)を計算
+	matView = XMMatrixTranspose(matCameraRot);
+
+	//視点座標に-1を掛けた座標
+	XMVECTOR reverseEyePosition = XMVectorNegate(eyePosition);
+
+	//カメラの位置からワールド原点へのベクトル(カメラ座標系)
+	XMVECTOR tX = XMVector3Dot(cameraAxisX, reverseEyePosition);
+	XMVECTOR tY = XMVector3Dot(cameraAxisY, reverseEyePosition);
+	XMVECTOR tZ = XMVector3Dot(cameraAxisZ, reverseEyePosition);
+
+	//一つのベクトルにまとめる
+	XMVECTOR translation = XMVectorSet(tX.m128_f32[0], tY.m128_f32[1], tZ.m128_f32[2], 1.0f);
+
+	//ビュー行列に平行移動成分を設定
+	matView.r[3] = translation;
+
+#pragma region 全方向ビルボード行列の計算
+
+	//ビルボード行列
+	matBillboard.r[0] = cameraAxisX;
+	matBillboard.r[1] = cameraAxisY;
+	matBillboard.r[2] = cameraAxisZ;
+	matBillboard.r[3] = XMVectorSet(0,0,0,1);
+
+#pragma endregion
+
+#pragma region Y軸周りビルボード行列の計算
+
+	//カメラX軸、Y軸、Z軸
+	XMVECTOR ybillCameraAxisX, ybillCameraAxisY, ybillCameraAxisZ;
+
+	//X軸は共通
+	ybillCameraAxisX = cameraAxisX;
+
+	//Y軸はワールド座標系のY軸
+	ybillCameraAxisY = XMVector3Normalize(upVector);
+
+	//Z軸はX軸→Y軸の外積で求まる
+	ybillCameraAxisZ = XMVector3Cross(ybillCameraAxisX, ybillCameraAxisY);
+
+	//Y軸周りビルボード行列
+	matBillboardY.r[0] = ybillCameraAxisX;
+	matBillboardY.r[1] = ybillCameraAxisY;
+	matBillboardY.r[2] = ybillCameraAxisZ;
+	matBillboardY.r[3] = XMVectorSet(0,0,0,1);
+
+#pragma endregion
+
+
 }
 
 bool Object3d::Initialize()
@@ -608,6 +749,9 @@ void Object3d::Update()
 
 	// ワールド行列の合成
 	matWorld = XMMatrixIdentity(); // 変形をリセット
+
+	matWorld *= matBillboardY;//ビルボード行列を掛ける
+
 	matWorld *= matScale; // ワールド行列にスケーリングを反映
 	matWorld *= matRot; // ワールド行列に回転を反映
 	matWorld *= matTrans; // ワールド行列に平行移動を反映
