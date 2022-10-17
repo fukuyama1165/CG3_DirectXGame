@@ -736,7 +736,7 @@ bool Object3d::Initialize()
 	return true;
 }
 
-void Object3d::Update()
+void Object3d::Update(int BillboardFlag)
 {
 	HRESULT result;
 	XMMATRIX matScale, matRot, matTrans;
@@ -756,7 +756,14 @@ void Object3d::Update()
 
 	matWorld *= matScale; // ワールド行列にスケーリングを反映
 	matWorld *= matRot; // ワールド行列に回転を反映
-	matWorld *= matBillboardY;
+	if(BillboardFlag==1)
+	{
+		matWorld *= matBillboard;
+	}
+	else if (BillboardFlag == 2)
+	{
+		matWorld *= matBillboardY;
+	}
 	matWorld *= matTrans; // ワールド行列に平行移動を反映
 
 	// 親オブジェクトがあれば

@@ -11,6 +11,7 @@ GameScene::~GameScene()
 {
 	delete spriteBG;
 	delete object3d;
+	delete object3d2;
 }
 
 void GameScene::Initialize(DirectXCommon* dxCommon, Input* input)
@@ -34,7 +35,9 @@ void GameScene::Initialize(DirectXCommon* dxCommon, Input* input)
 	spriteBG = Sprite::Create(1, { 0.0f,0.0f });
 	// 3Dオブジェクト生成
 	object3d = Object3d::Create();
-	object3d->Update();
+	object3d->Update(1);
+	object3d2 = Object3d::Create();
+	object3d2->Update(2);
 }
 
 void GameScene::Update()
@@ -64,7 +67,8 @@ void GameScene::Update()
 		else if (input->PushKey(DIK_A)) { Object3d::CameraMoveEyeVector({ -1.0f,0.0f,0.0f }); }
 	}
 
-	object3d->Update();
+	object3d->Update(1);
+	object3d2->Update(2);
 }
 
 void GameScene::Draw()
@@ -94,6 +98,7 @@ void GameScene::Draw()
 
 	// 3Dオブクジェクトの描画
 	object3d->Draw();
+	object3d2->Draw();
 
 	/// <summary>
 	/// ここに3Dオブジェクトの描画処理を追加できる
