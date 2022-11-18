@@ -5,11 +5,19 @@
 #include <d3d12.h>
 #include <DirectXMath.h>
 #include <d3dx12.h>
+#include <forward_list>
+
+enum ParticleAddSplit
+{
+	minusSplit,
+	centerSplit,
+	plusSplit
+};
 
 /// <summary>
 /// 3Dオブジェクト
 /// </summary>
-class Object3d
+class ParticleManager
 {
 private: // エイリアス
 	// Microsoft::WRL::を省略
@@ -22,18 +30,46 @@ private: // エイリアス
 
 public: // サブクラス
 	// 頂点データ構造体
-	struct VertexPosNormalUv
+	//struct VertexPosNormalUv
+	//{
+	//	XMFLOAT3 pos; // xyz座標
+	//	XMFLOAT3 normal; // 法線ベクトル
+	//	XMFLOAT2 uv;  // uv座標
+	//};
+
+	struct VertexPos
 	{
 		XMFLOAT3 pos; // xyz座標
-		XMFLOAT3 normal; // 法線ベクトル
-		XMFLOAT2 uv;  // uv座標
 	};
 
 	// 定数バッファ用データ構造体
 	struct ConstBufferData
 	{
-		XMFLOAT4 color;	// 色 (RGBA)
+		//XMFLOAT4 color;	// 色 (RGBA)
 		XMMATRIX mat;	// ３Ｄ変換行列
+		XMMATRIX matBillboard;
+	};
+
+	struct Particle
+	{
+		using XMFLOAT3 = DirectX::XMFLOAT3;
+
+		//座標
+		XMFLOAT3 position = {};
+
+		//速度
+		XMFLOAT3 velocity = {};
+
+		//加速度
+		XMFLOAT3 accel = {};
+
+		//現在フレーム
+		int frame = 0;
+
+		//終了フレーム
+		int numFrame = 0;
+
+
 	};
 
 private: // 定数
@@ -41,8 +77,8 @@ private: // 定数
 	static const float radius;				// 底面の半径
 	static const float prizmHeight;			// 柱の高さ
 	static const int planeCount = division * 2 + division * 2;		// 面の数
-	static const int vertexCount = 4;// 頂点数
-	static const int indexCount = 3 * 2;//インデックス数
+	static const int vertexCount = 1024;// 頂点数
+	//static const int indexCount = 3 * 2;//インデックス数
 
 public: // 静的メンバ関数
 	/// <summary>
@@ -68,7 +104,7 @@ public: // 静的メンバ関数
 	/// 3Dオブジェクト生成
 	/// </summary>
 	/// <returns></returns>
-	static Object3d* Create();
+	static ParticleManager* Create();
 
 	/// <summary>
 	/// 視点座標の取得
@@ -122,7 +158,7 @@ private: // 静的メンバ変数
 	// 頂点バッファ
 	static ComPtr<ID3D12Resource> vertBuff;
 	// インデックスバッファ
-	static ComPtr<ID3D12Resource> indexBuff;
+	//static ComPtr<ID3D12Resource> indexBuff;
 	// テクスチャバッファ
 	static ComPtr<ID3D12Resource> texbuff;
 	// シェーダリソースビューのハンドル(CPU)
@@ -142,11 +178,11 @@ private: // 静的メンバ変数
 	// 頂点バッファビュー
 	static D3D12_VERTEX_BUFFER_VIEW vbView;
 	// インデックスバッファビュー
-	static D3D12_INDEX_BUFFER_VIEW ibView;
+	//static D3D12_INDEX_BUFFER_VIEW ibView;
 	// 頂点データ配列
-	static VertexPosNormalUv vertices[vertexCount];
+	static VertexPos vertices[vertexCount];
 	// 頂点インデックス配列
-	static unsigned short indices[indexCount];
+	//static unsigned short indices[indexCount];
 
 	//ビルボード行列
 	static XMMATRIX matBillboard;
@@ -203,30 +239,39 @@ public: // メンバ関数
 	/// <summary>
 	/// 座標の取得
 	/// </summary>
-	/// <returns>座標</returns>
-	const XMFLOAT3& GetPosition() const { return position; }
+
+	void Add(int life, XMFLOAT3 position, XMFLOAT3 velocity, XMFLOAT3 accel);
 
 	/// <summary>
-	/// 座標の設定
+	/// パーティクル発生
 	/// </summary>
-	/// <param name="position">座標</param>
-	void SetPosition(const XMFLOAT3& position) { this->position = position; }
-
+	/// <param name="centerPos">発生する中心座標</param>
+	/// <param name="addPosWidth">出てくる場所の幅</param>
+	/// <param name="addVelocityWidth">出てくる速度の幅</param>
+	/// <param name="addAccelWidth">出てくる加速度の幅</param>
+	/// <param name="particleNum">一度に出す量</param>
+	/// <param name="particleLife">パーティクルの生存時間</param>
+	/// <param name="posSplit">座標のランダムをどちらに寄せるか minusSplit =マイナス寄り,centerSplit=半分,plusSplit=プラス寄り</param>
+	/// <param name="velocitySplit">速度のランダムをどちらに寄せるか minusSplit =マイナス寄り,centerSplit=半分,plusSplit=プラス寄り</param>
+	/// <param name="accelSplit">加速度のランダムをどちらに寄せるか minusSplit =マイナス寄り,centerSplit=半分,plusSplit=プラス寄り</param>
+	void ParticleAdd(XMFLOAT3 centerPos, XMFLOAT3 addPosWidth, XMFLOAT3 addVelocityWidth, XMFLOAT3 addAccelWidth, int particleNum,int particleLife,int posSplit = centerSplit, int velocitySplit = centerSplit, int accelSplit = centerSplit);
 	
 
 private: // メンバ変数
 	ComPtr<ID3D12Resource> constBuff; // 定数バッファ
 	// 色
-	XMFLOAT4 color = { 1,1,1,1 };
+
 	// ローカルスケール
 	XMFLOAT3 scale = { 1,1,1 };
 	// X,Y,Z軸回りのローカル回転角
-	XMFLOAT3 rotation = { 0,0,0 };
+	
+	std::forward_list<Particle> particles;
+
 	// ローカル座標
-	XMFLOAT3 position = { 0,0,0 };
+	
 	// ローカルワールド変換行列
-	XMMATRIX matWorld;
+	
 	// 親オブジェクト
-	Object3d* parent = nullptr;
+	
 };
 
