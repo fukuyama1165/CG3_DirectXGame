@@ -5,7 +5,9 @@
 #include "Input.h"
 #include "Sprite.h"
 #include "ParticleManager.h"
+#include "Object3d.h"
 #include "DebugText.h"
+#include "ParticleEmitter.h"
 
 /// <summary>
 /// ゲームシーン
@@ -55,12 +57,26 @@ private: // メンバ変数
 	DirectXCommon* dxCommon = nullptr;
 	Input* input = nullptr;
 	DebugText debugText;	
+	DebugText* debugTextI;	
 
 	/// <summary>
 	/// ゲームシーン用
 	/// </summary>
 	Sprite* spriteBG = nullptr;
 	ParticleManager* object3d = nullptr;
+	ParticleManager* object3d2 = nullptr;
+
+	Object3d* obj=nullptr;
+	Object3d* obj2=nullptr;
+
+	emitter emitter1;
+	emitter emitter2;
+
+	int sceen = 0;
+
+	float x = 0;
+	float y = 0;
+
 	
 };
 

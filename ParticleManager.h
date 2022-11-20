@@ -61,6 +61,18 @@ public: // サブクラス
 		XMMATRIX matBillboard;
 	};
 
+	
+
+private: // 定数
+	static const int division = 50;					// 分割数
+	static const float radius;				// 底面の半径
+	static const float prizmHeight;			// 柱の高さ
+	static const int planeCount = division * 2 + division * 2;		// 面の数
+	static const int vertexCount = 1024;// 頂点数
+	//static const int indexCount = 3 * 2;//インデックス数
+
+public: // 静的メンバ関数
+
 	struct Particle
 	{
 		using XMFLOAT3 = DirectX::XMFLOAT3;
@@ -101,15 +113,6 @@ public: // サブクラス
 
 	};
 
-private: // 定数
-	static const int division = 50;					// 分割数
-	static const float radius;				// 底面の半径
-	static const float prizmHeight;			// 柱の高さ
-	static const int planeCount = division * 2 + division * 2;		// 面の数
-	static const int vertexCount = 1024;// 頂点数
-	//static const int indexCount = 3 * 2;//インデックス数
-
-public: // 静的メンバ関数
 	/// <summary>
 	/// 静的初期化
 	/// </summary>
@@ -291,8 +294,10 @@ public: // メンバ関数
 	/// <param name="accelSplit">加速度のランダムをどちらに寄せるか minusSplit =マイナス寄り,centerSplit=半分,plusSplit=プラス寄り</param>
 	void ParticleAdd(XMFLOAT3 centerPos, XMFLOAT3 addPosWidth, XMFLOAT3 addVelocityWidth, XMFLOAT3 addAccelWidth, int particleNum,int particleLife, float startScale, float endScale, float rotate, XMFLOAT4 color,int posSplit = centerSplit, int velocitySplit = centerSplit, int accelSplit = minusSplit);
 	
+	std::forward_list<Particle>* getParticles() { return &particles; };
 
 	void setBlend(int blendMode);
+	std::forward_list<Particle> particles;
 
 private: // メンバ変数
 	ComPtr<ID3D12Resource> constBuff; // 定数バッファ
@@ -302,7 +307,7 @@ private: // メンバ変数
 	XMFLOAT3 scale = { 1,1,1 };
 	// X,Y,Z軸回りのローカル回転角
 	
-	std::forward_list<Particle> particles;
+	
 
 	// ローカル座標
 	
