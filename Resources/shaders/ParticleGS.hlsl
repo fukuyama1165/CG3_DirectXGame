@@ -29,11 +29,21 @@ void main(
 
 	for (uint i = 0; i < vnum; i++)
 	{
-		float4 offset = mul(matBillboard, offset_array[i]);
+		float4 offset = offset_array[i]*input[0].scale;
+
+		float sinX = sin(input[0].rotate);
+		float cosX = cos(input[0].rotate);
+
+		float2x2 rot= float2x2(cosX, -sinX, sinX, cosX);
+
+		offset.xy = mul(rot, offset.xy);
+
+		offset = mul(matBillboard, offset);
 
 		element.svpos = input[0].pos+ offset;
 		element.svpos = mul(mat,element.svpos);
 		element.uv = uv_array[i];
+		element.color = input[0].color;
 		output.Append(element);
 
 	}

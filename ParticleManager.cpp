@@ -38,6 +38,8 @@ XMMATRIX ParticleManager::matBillboardY = XMMatrixIdentity();
 
 const DirectX::XMFLOAT3 operator+(const DirectX::XMFLOAT3& lhs, const DirectX::XMFLOAT3& rhs);
 
+const DirectX::XMFLOAT4 operator+(const DirectX::XMFLOAT4& lhs, const DirectX::XMFLOAT4& rhs);
+
 void ParticleManager::StaticInitialize(ID3D12Device * device, int window_width, int window_height)
 {
 	// nullptrチェック
@@ -273,16 +275,30 @@ void ParticleManager::InitializeGraphicsPipeline()
 			D3D12_APPEND_ALIGNED_ELEMENT,
 			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
 		},
-		//{ // 法線ベクトル(1行で書いたほうが見やすい)
-		//	"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,
-		//	D3D12_APPEND_ALIGNED_ELEMENT,
-		//	D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
-		//},
-		//{ // uv座標(1行で書いたほうが見やすい)
-		//	"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0,
-		//	D3D12_APPEND_ALIGNED_ELEMENT,
-		//	D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
-		//},
+		//スケール
+		{
+
+			"TEXCOORD",0,DXGI_FORMAT_R32_FLOAT,0,
+			D3D12_APPEND_ALIGNED_ELEMENT,
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0
+
+		},
+		//回転
+		{
+
+			"ROTATE",0,DXGI_FORMAT_R32_FLOAT,0,
+			D3D12_APPEND_ALIGNED_ELEMENT,
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0
+
+		},
+		//色
+		{
+
+			"COLOR",0,DXGI_FORMAT_R32G32B32A32_FLOAT,0,
+			D3D12_APPEND_ALIGNED_ELEMENT,
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0
+
+		},
 	};
 
 	// グラフィックスパイプラインの流れを設定
@@ -307,14 +323,14 @@ void ParticleManager::InitializeGraphicsPipeline()
 	blenddesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;	// RBGA全てのチャンネルを描画
 	blenddesc.BlendEnable = true;
 	//半透明
-	/*blenddesc.BlendOp = D3D12_BLEND_OP_ADD;
+	blenddesc.BlendOp = D3D12_BLEND_OP_ADD;
 	blenddesc.SrcBlend = D3D12_BLEND_SRC_ALPHA;
-	blenddesc.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;*/
+	blenddesc.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
 
 	//加算
-	blenddesc.BlendOp = D3D12_BLEND_OP_ADD;
+	/*blenddesc.BlendOp = D3D12_BLEND_OP_ADD;
 	blenddesc.SrcBlend = D3D12_BLEND_ONE;
-	blenddesc.DestBlend = D3D12_BLEND_ONE;
+	blenddesc.DestBlend = D3D12_BLEND_ONE;*/
 
 	//減算
 	/*blenddesc.BlendOp = D3D12_BLEND_OP_REV_SUBTRACT;
@@ -818,6 +834,19 @@ void ParticleManager::Update(int BillboardFlag)
 		//速度による移動
 		it->position = it->position + it->velocity;
 
+		//進行度を0~1の範囲に換算
+		float f = (float)it->frame / it->numFrame;
+
+		//スケールの線形補間
+		it->scale = (it->eScale - it->sScale) * f;
+
+		it->scale += it->sScale;
+
+		it->rotate += it->addRotate;
+
+		it->color = it->color + it->addColor;
+
+
 	}
 
 	//頂点バッファへのデータ転送
@@ -833,6 +862,12 @@ void ParticleManager::Update(int BillboardFlag)
 
 			//座標
 			vertMap->pos = it->position;
+
+			vertMap->scale = it->scale;
+
+			vertMap->rotate = it->rotate;
+
+			vertMap->color = it->color;
 
 			//次の頂点へ
 			vertMap++;
@@ -880,7 +915,7 @@ void ParticleManager::Draw()
 }
 
 
-void ParticleManager::Add(int life, XMFLOAT3 position, XMFLOAT3 velocity, XMFLOAT3 accel)
+void ParticleManager::Add(int life, XMFLOAT3 position, XMFLOAT3 velocity, XMFLOAT3 accel, float startScale, float endScale, float rotate, XMFLOAT4 color)
 {
 
 	//リストに要素を追加
@@ -894,10 +929,15 @@ void ParticleManager::Add(int life, XMFLOAT3 position, XMFLOAT3 velocity, XMFLOA
 	p.velocity = velocity;
 	p.accel = accel;
 	p.numFrame = life;
+	p.sScale = startScale;
+	p.eScale = endScale;
+	p.scale = startScale;
+	p.addRotate = rotate;
+	p.addColor = color;
 
 }
 
-void ParticleManager::ParticleAdd(XMFLOAT3 centerPos, XMFLOAT3 addPosWidth, XMFLOAT3 addVelocityWidth, XMFLOAT3 addAccelWidth, int particleNum, int particleLife, int posSplit, int velocitySplit, int accelSplit)
+void ParticleManager::ParticleAdd(XMFLOAT3 centerPos, XMFLOAT3 addPosWidth, XMFLOAT3 addVelocityWidth, XMFLOAT3 addAccelWidth, int particleNum, int particleLife, float startScale, float endScale, float rotate, XMFLOAT4 color, int posSplit, int velocitySplit, int accelSplit)
 {
 
 	if (std::distance(particles.begin(), particles.end()) >= vertexCount)
@@ -977,9 +1017,16 @@ void ParticleManager::ParticleAdd(XMFLOAT3 centerPos, XMFLOAT3 addPosWidth, XMFL
 			acc.z = ((float)rand() / RAND_MAX * addAccelWidth.z - addAccelWidth.z);
 		}
 
-		Add(particleLife, pos, vel, acc);
+		Add(particleLife, pos, vel, acc,startScale,endScale,rotate,color);
 
 	}
+
+}
+
+void ParticleManager::setBlend(int blendMode)
+{
+
+	
 
 }
 
@@ -990,6 +1037,19 @@ const DirectX::XMFLOAT3 operator+(const DirectX::XMFLOAT3& lhs, const DirectX::X
 	result.x = lhs.x + rhs.x;
 	result.y = lhs.y + rhs.y;
 	result.z = lhs.z + rhs.z;
+
+	return result;
+
+}
+
+const DirectX::XMFLOAT4 operator+(const DirectX::XMFLOAT4& lhs, const DirectX::XMFLOAT4& rhs)
+{
+
+	XMFLOAT4 result;
+	result.x = lhs.x + rhs.x;
+	result.y = lhs.y + rhs.y;
+	result.z = lhs.z + rhs.z;
+	result.w = lhs.w + rhs.w;
 
 	return result;
 

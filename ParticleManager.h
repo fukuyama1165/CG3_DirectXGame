@@ -14,6 +14,14 @@ enum ParticleAddSplit
 	plusSplit
 };
 
+enum blendMode
+{
+	blendModeAlpha,
+	blendModeAdd,
+	blendModeSub,
+
+};
+
 /// <summary>
 /// 3Dオブジェクト
 /// </summary>
@@ -40,6 +48,9 @@ public: // サブクラス
 	struct VertexPos
 	{
 		XMFLOAT3 pos; // xyz座標
+		float scale;//スケール
+		float rotate;//回転
+		XMFLOAT4 color;//色
 	};
 
 	// 定数バッファ用データ構造体
@@ -69,6 +80,24 @@ public: // サブクラス
 		//終了フレーム
 		int numFrame = 0;
 
+		//スケール
+		float scale = 1.0f;
+
+		//初期値
+		float sScale = 1.0f;
+
+		//最終値
+		float eScale = 0.0f;
+
+		//角度(Z軸)
+		float rotate = 0.0f;
+
+		float addRotate = 0.0f;
+
+		//色
+		XMFLOAT4 color = { 1.0f,1.0f,1.0f,1.0f };
+
+		XMFLOAT4 addColor = { 0.0f,0.0f,0.0f,0.0f };
 
 	};
 
@@ -208,6 +237,8 @@ private:// 静的メンバ関数
 	/// </summary>
 	/// <returns>成否</returns>
 	static void InitializeGraphicsPipeline();
+	static void InitializeGraphicsPipeline2();
+	static void InitializeGraphicsPipeline3();
 
 	/// <summary>
 	/// テクスチャ読み込み
@@ -240,7 +271,7 @@ public: // メンバ関数
 	/// 座標の取得
 	/// </summary>
 
-	void Add(int life, XMFLOAT3 position, XMFLOAT3 velocity, XMFLOAT3 accel);
+	void Add(int life, XMFLOAT3 position, XMFLOAT3 velocity, XMFLOAT3 accel,float startScale,float endScale,float rotate,XMFLOAT4 color);
 
 	/// <summary>
 	/// パーティクル発生
@@ -251,11 +282,17 @@ public: // メンバ関数
 	/// <param name="addAccelWidth">出てくる加速度の幅</param>
 	/// <param name="particleNum">一度に出す量</param>
 	/// <param name="particleLife">パーティクルの生存時間</param>
+	/// <param name="startScale">初めのスケール</param>
+	/// <param name="endScale">終わった時のスケール</param>
+	/// <param name="rotate">回転角度増加量</param>
+	/// <param name="color">色合い</param>
 	/// <param name="posSplit">座標のランダムをどちらに寄せるか minusSplit =マイナス寄り,centerSplit=半分,plusSplit=プラス寄り</param>
 	/// <param name="velocitySplit">速度のランダムをどちらに寄せるか minusSplit =マイナス寄り,centerSplit=半分,plusSplit=プラス寄り</param>
 	/// <param name="accelSplit">加速度のランダムをどちらに寄せるか minusSplit =マイナス寄り,centerSplit=半分,plusSplit=プラス寄り</param>
-	void ParticleAdd(XMFLOAT3 centerPos, XMFLOAT3 addPosWidth, XMFLOAT3 addVelocityWidth, XMFLOAT3 addAccelWidth, int particleNum,int particleLife,int posSplit = centerSplit, int velocitySplit = centerSplit, int accelSplit = centerSplit);
+	void ParticleAdd(XMFLOAT3 centerPos, XMFLOAT3 addPosWidth, XMFLOAT3 addVelocityWidth, XMFLOAT3 addAccelWidth, int particleNum,int particleLife, float startScale, float endScale, float rotate, XMFLOAT4 color,int posSplit = centerSplit, int velocitySplit = centerSplit, int accelSplit = minusSplit);
 	
+
+	void setBlend(int blendMode);
 
 private: // メンバ変数
 	ComPtr<ID3D12Resource> constBuff; // 定数バッファ

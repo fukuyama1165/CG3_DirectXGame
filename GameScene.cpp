@@ -57,7 +57,8 @@ void GameScene::Update()
 		else if (input->PushKey(DIK_A)) { ParticleManager::CameraMoveEyeVector({ -1.0f,0.0f,0.0f }); }
 	}
 
-	object3d->ParticleAdd({}, { 1,1,1 }, { 0.1f,0.1f,0.1f }, { 0,0.001f,0 }, 10, 60, centerSplit, centerSplit, minusSplit);
+	object3d->ParticleAdd({}, { 1,1,1 }, { 0.1f,0.1f,0.1f }, { 0,0.001f,0 }, 10, 60,1.0f,0.0f,10.0f,{0.0f,-0.1f,-0.1f,0.0f});
+	object3d->ParticleAdd({20,0,0}, { 1,1,1 }, { 0.1f,0.1f,0.1f }, { 0,0.001f,0 }, 10, 60,1.0f,0.0f,10.0f,{0.0f,-0.1f,-0.1f,0.0f});
 
 	object3d->Update(1);
 }

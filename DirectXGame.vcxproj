@@ -91,6 +91,7 @@
   <ItemGroup>
     <ClCompile Include="DebugText.cpp" />
     <ClCompile Include="DirectXCommon.cpp" />
+    <ClCompile Include="ParticleEmitter.cpp" />
     <ClCompile Include="GameScene.cpp" />
     <ClCompile Include="Input.cpp" />
     <ClCompile Include="main.cpp" />
@@ -153,6 +154,7 @@
     <ClInclude Include="DirectXCommon.h" />
     <ClInclude Include="GameScene.h" />
     <ClInclude Include="Input.h" />
+    <ClInclude Include="ParticleEmitter.h" />
     <ClInclude Include="ParticleManager.h" />
     <ClInclude Include="Sprite.h" />
     <ClInclude Include="WinApp.h" />
